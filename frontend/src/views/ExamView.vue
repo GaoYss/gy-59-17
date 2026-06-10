@@ -8,6 +8,7 @@ import MessageBar from '../components/MessageBar.vue'
 import { subjects } from '../constants/options'
 
 const studentName = ref('')
+const idNumber = ref('')
 const subject = ref('科目一')
 const questions = ref([])
 const answers = reactive({})
@@ -49,6 +50,7 @@ async function submitExam() {
   try {
     result.value = await examApi.submit({
       studentName: studentName.value,
+      idNumber: idNumber.value,
       subject: subject.value,
       answers: { ...answers }
     })
@@ -76,12 +78,16 @@ onMounted(loadQuestions)
         <ClipboardCheck :size="20" />
       </div>
 
-      <div class="toolbar">
+      <div class="toolbar exam-toolbar">
         <label>
           <span>学员姓名</span>
           <input v-model.trim="studentName" placeholder="请输入姓名" />
         </label>
         <label>
+          <span>证件号</span>
+          <input v-model.trim="idNumber" placeholder="身份证或档案号（用于轨迹查询）" />
+        </label>
+        <label class="exam-subject">
           <span>考试科目</span>
           <select v-model="subject" @change="loadQuestions">
             <option v-for="item in subjects" :key="item">{{ item }}</option>
@@ -121,3 +127,15 @@ onMounted(loadQuestions)
     </aside>
   </section>
 </template>
+
+<style scoped>
+.exam-toolbar {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+@media (max-width: 640px) {
+  .exam-toolbar {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

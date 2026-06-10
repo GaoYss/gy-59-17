@@ -29,3 +29,13 @@ export const ruleApi = {
   list: () => api.get('/api/rules'),
   update: (id, payload) => api.patch(`/api/rules/${id}`, payload)
 }
+
+export const studentApi = {
+  trajectory: (params = {}) => {
+    const query = new URLSearchParams()
+    if (params.idNumber) query.set('idNumber', params.idNumber)
+    if (params.studentName) query.set('studentName', params.studentName)
+    const suffix = query.toString() ? `?${query}` : ''
+    return api.get(`/api/students/trajectory${suffix}`)
+  }
+}

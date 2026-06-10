@@ -5,6 +5,7 @@ import {
   ClipboardList,
   FileText,
   RotateCcw,
+  Route,
   SlidersHorizontal
 } from 'lucide-vue-next'
 
@@ -13,12 +14,14 @@ import ExamView from './views/ExamView.vue'
 import ScoresView from './views/ScoresView.vue'
 import MakeupView from './views/MakeupView.vue'
 import RulesView from './views/RulesView.vue'
+import TrajectoryView from './views/TrajectoryView.vue'
 
 const navItems = [
   { key: 'appointments', label: '科目预约', icon: CalendarCheck, component: AppointmentView },
   { key: 'exam', label: '模拟考试', icon: ClipboardList, component: ExamView },
   { key: 'scores', label: '成绩查询', icon: FileText, component: ScoresView },
   { key: 'makeups', label: '补考管理', icon: RotateCcw, component: MakeupView },
+  { key: 'trajectory', label: '考试轨迹', icon: Route, component: TrajectoryView },
   { key: 'rules', label: '约考规则', icon: SlidersHorizontal, component: RulesView }
 ]
 

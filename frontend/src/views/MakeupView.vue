@@ -15,6 +15,7 @@ const saving = ref(false)
 const message = reactive({ text: '', type: 'info' })
 const form = reactive({
   studentName: '',
+  idNumber: '',
   originalSubject: '科目二',
   failedScore: 0,
   scheduledDate: '',
@@ -23,6 +24,7 @@ const form = reactive({
 
 const columns = [
   { key: 'studentName', label: '学员' },
+  { key: 'idNumber', label: '证件号' },
   { key: 'originalSubject', label: '原科目' },
   { key: 'failedScore', label: '失败分数' },
   { key: 'scheduledDate', label: '补考日期' },
@@ -49,6 +51,7 @@ async function createMakeup() {
     await makeupApi.create({ ...form })
     Object.assign(form, {
       studentName: '',
+      idNumber: '',
       originalSubject: form.originalSubject,
       failedScore: 0,
       scheduledDate: '',
@@ -94,6 +97,10 @@ onMounted(loadMakeups)
       <label>
         <span>学员姓名</span>
         <input v-model.trim="form.studentName" required placeholder="请输入姓名" />
+      </label>
+      <label>
+        <span>证件号</span>
+        <input v-model.trim="form.idNumber" placeholder="身份证或档案号（用于轨迹查询）" />
       </label>
       <div class="field-row">
         <label>

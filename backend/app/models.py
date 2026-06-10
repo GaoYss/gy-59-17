@@ -76,6 +76,7 @@ class ExamRecord(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     student_name = db.Column(db.String(60), nullable=False)
+    id_number = db.Column(db.String(30), nullable=True)
     subject = db.Column(db.String(20), nullable=False)
     score = db.Column(db.Integer, nullable=False)
     total_questions = db.Column(db.Integer, nullable=False)
@@ -88,6 +89,7 @@ class ExamRecord(db.Model):
         return {
             "id": self.id,
             "studentName": self.student_name,
+            "idNumber": self.id_number,
             "subject": self.subject,
             "score": self.score,
             "totalQuestions": self.total_questions,
@@ -103,6 +105,7 @@ class Makeup(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     student_name = db.Column(db.String(60), nullable=False)
+    id_number = db.Column(db.String(30), nullable=True)
     original_subject = db.Column(db.String(20), nullable=False)
     failed_score = db.Column(db.Integer, nullable=False)
     scheduled_date = db.Column(db.Date, nullable=True)
@@ -114,6 +117,7 @@ class Makeup(db.Model):
         return {
             "id": self.id,
             "studentName": self.student_name,
+            "idNumber": self.id_number,
             "originalSubject": self.original_subject,
             "failedScore": self.failed_score,
             "scheduledDate": self.scheduled_date.isoformat()

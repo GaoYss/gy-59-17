@@ -38,8 +38,11 @@ def create_makeup():
     if scheduled_date == "invalid":
         return jsonify({"message": "补考日期格式应为 YYYY-MM-DD"}), 400
 
+    id_number = payload.get("idNumber", "").strip() or None
+
     makeup = Makeup(
         student_name=payload["studentName"].strip(),
+        id_number=id_number,
         original_subject=payload["originalSubject"],
         failed_score=int(payload["failedScore"]),
         scheduled_date=scheduled_date,

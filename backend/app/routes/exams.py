@@ -23,6 +23,7 @@ def list_questions():
 def submit_exam():
     payload = request.get_json() or {}
     student_name = payload.get("studentName", "").strip()
+    id_number = payload.get("idNumber", "").strip() or None
     subject = payload.get("subject", "")
     answers = payload.get("answers", {})
 
@@ -57,6 +58,7 @@ def submit_exam():
 
     record = ExamRecord(
         student_name=student_name,
+        id_number=id_number,
         subject=subject,
         score=score,
         total_questions=len(questions),
@@ -70,6 +72,7 @@ def submit_exam():
     if not passed:
         makeup = Makeup(
             student_name=student_name,
+            id_number=id_number,
             original_subject=subject,
             failed_score=score,
             status="待安排",
