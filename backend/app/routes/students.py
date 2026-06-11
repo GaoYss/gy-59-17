@@ -49,7 +49,6 @@ def get_student_trajectory():
     appointments = _merge_unique(idn_appointments, name_appointments)
     exam_records = _merge_unique(idn_exams, name_exams)
     makeups = _merge_unique(idn_makeups, name_makeups)
-
     exam_id_to_index = {}
 
     timeline = []
@@ -117,7 +116,44 @@ def get_student_trajectory():
             item["sourceExamIndex"] = exam_idx
         timeline.append(item)
 
-    timeline.sort(key=lambda item: (item["datetime"], 0 if item["type"] == "exam" else 1))
+    units = []
+    processed_keys = set()
+
+    def item_key(item):
+        return (item["type"], item["id"])
+
+    for item in timeline:
+        if item_key(item) in processed_keys:
+            continue
+        if item.get("groupRole") == "head":
+            group_id = item["groupId"]
+            tail_items = [
+                t for t in timeline
+                if t.get("groupRole") == "tail" and t.get("groupId") == group_id
+            ]
+            if tail_items:
+                group_items = [item] + tail_items
+                units.append({
+                    "type": "group",
+                    "sort_key": item["datetime"],
+                    "items": group_items,
+                })
+                processed_keys.add(item_key(item))
+                for t in tail_items:
+                    processed_keys.add(item_key(t))
+                continue
+        units.append({
+            "type": "single",
+            "sort_key": item["datetime"],
+            "items": [item],
+        })
+        processed_keys.add(item_key(item))
+
+    units.sort(key=lambda u: (u["sort_key"], 0 if u["type"] == "group" else 1))
+
+    timeline = []
+    for unit in units:
+        timeline.extend(unit["items"])
 
     result_appointments = sorted([a.to_dict() for a in appointments], key=lambda x: x["createdAt"])
     result_exams = sorted([e.to_dict() for e in exam_records], key=lambda x: x["submittedAt"])
@@ -160,3 +196,36 @@ def get_student_trajectory():
             "makeups": result_makeups,
         }
     )
+
+
+@students_bp.get("/failed-exams")
+def get_student_failed_exams():
+    id_number = request.args.get("idNumber", "").strip()
+    student_name = request.args.get("studentName", "").strip()
+
+    if not id_number and not student_name:
+        return jsonify({"message": "请提供证件号或学员姓名"}), 400
+
+    query = ExamRecord.query.filter_by(passed=False)
+    if id_number:
+        query = query.filter_by(id_number=id_number)
+    elif student_name:
+        query = query.filter_by(student_name=student_name)
+
+    linked_exam_ids = [
+        m.source_exam_id
+        for m in Makeup.query.filter(Makeup.source_exam_id.isnot(None)).all()
+    ]
+    query = query.filter(~ExamRecord.id.in_(linked_exam_ids))
+
+    exams = query.order_by(ExamRecord.submitted_at.desc()).all()
+    result = []
+    for exam in exams:
+        result.append({
+            "id": exam.id,
+            "subject": exam.subject,
+            "score": exam.score,
+            "submittedAt": exam.submitted_at.isoformat(timespec="seconds"),
+            "description": f"{exam.subject} - {exam.score}分 - {exam.submitted_at.strftime('%Y-%m-%d %H:%M')}",
+        })
+    return jsonify(result)

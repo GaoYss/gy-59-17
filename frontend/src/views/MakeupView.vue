@@ -1,8 +1,8 @@
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 import { Plus, RefreshCcw } from 'lucide-vue-next'
 
-import { makeupApi } from '../api/modules'
+import { makeupApi, studentApi } from '../api/modules'
 import DataTable from '../components/DataTable.vue'
 import EmptyState from '../components/EmptyState.vue'
 import MessageBar from '../components/MessageBar.vue'
@@ -10,8 +10,10 @@ import StatusBadge from '../components/StatusBadge.vue'
 import { makeupStatuses, subjects } from '../constants/options'
 
 const makeups = ref([])
+const failedExams = ref([])
 const loading = ref(false)
 const saving = ref(false)
+const loadingExams = ref(false)
 const message = reactive({ text: '', type: 'info' })
 const form = reactive({
   studentName: '',
@@ -19,7 +21,8 @@ const form = reactive({
   originalSubject: '科目二',
   failedScore: 0,
   scheduledDate: '',
-  notes: ''
+  notes: '',
+  sourceExamId: null
 })
 
 const columns = [
@@ -29,8 +32,41 @@ const columns = [
   { key: 'failedScore', label: '失败分数' },
   { key: 'scheduledDate', label: '补考日期' },
   { key: 'status', label: '状态' },
-  { key: 'notes', label: '备注' }
+  { key: 'notes', label: '备注' },
+  { key: 'sourceExamId', label: '关联考试' }
 ]
+
+async function loadFailedExams() {
+  if (!form.studentName && !form.idNumber) {
+    failedExams.value = []
+    form.sourceExamId = null
+    return
+  }
+  loadingExams.value = true
+  try {
+    const params = {}
+    if (form.idNumber) params.idNumber = form.idNumber
+    if (form.studentName) params.studentName = form.studentName
+    failedExams.value = await studentApi.getFailedExams(params)
+    const currentId = form.sourceExamId
+    if (currentId && !failedExams.value.some(e => e.id === currentId)) {
+      form.sourceExamId = null
+    }
+  } catch (error) {
+    failedExams.value = []
+    form.sourceExamId = null
+  } finally {
+    loadingExams.value = false
+  }
+}
+
+watch(
+  () => [form.studentName, form.idNumber],
+  () => {
+    loadFailedExams()
+  },
+  { debounce: 300 }
+)
 
 async function loadMakeups() {
   loading.value = true
@@ -48,15 +84,19 @@ async function createMakeup() {
   saving.value = true
   message.text = ''
   try {
-    await makeupApi.create({ ...form })
+    const payload = { ...form }
+    if (!payload.sourceExamId) delete payload.sourceExamId
+    await makeupApi.create(payload)
     Object.assign(form, {
       studentName: '',
       idNumber: '',
       originalSubject: form.originalSubject,
       failedScore: 0,
       scheduledDate: '',
-      notes: ''
+      notes: '',
+      sourceExamId: null
     })
+    failedExams.value = []
     message.text = '补考记录已创建'
     message.type = 'success'
     await loadMakeups()
@@ -119,6 +159,27 @@ onMounted(loadMakeups)
         <input v-model="form.scheduledDate" type="date" />
       </label>
       <label>
+        <span>关联考试</span>
+        <select
+          v-model="form.sourceExamId"
+          :disabled="loadingExams || failedExams.length === 0"
+        >
+          <option :value="null">
+            {{ loadingExams ? '加载中...' : (failedExams.length === 0 ? '请先输入学员信息' : '不关联（独立补考）') }}
+          </option>
+          <option
+            v-for="exam in failedExams"
+            :key="exam.id"
+            :value="exam.id"
+          >
+            {{ exam.description }}
+          </option>
+        </select>
+        <p v-if="form.sourceExamId && form.studentName" class="field-hint">
+          登记后该补考将在考试轨迹中与所选考试关联显示
+        </p>
+      </label>
+      <label>
         <span>备注</span>
         <textarea v-model.trim="form.notes" rows="3" placeholder="训练重点或失败原因"></textarea>
       </label>
@@ -144,6 +205,12 @@ onMounted(loadMakeups)
       <DataTable v-else :columns="columns" :rows="makeups">
         <template #status="{ row }">
           <StatusBadge :status="row.status" />
+        </template>
+        <template #sourceExamId="{ row }">
+          <span v-if="row.sourceExamId" class="link-badge">
+            关联考试 #{{ row.sourceExamId }}
+          </span>
+          <span v-else class="muted-text">-</span>
         </template>
         <template #scheduledDate="{ row }">
           <input

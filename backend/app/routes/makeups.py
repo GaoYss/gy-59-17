@@ -3,7 +3,7 @@ from datetime import datetime
 from flask import Blueprint, jsonify, request
 
 from ..extensions import db
-from ..models import Makeup
+from ..models import ExamRecord, Makeup
 
 makeups_bp = Blueprint("makeups", __name__, url_prefix="/api/makeups")
 
@@ -39,6 +39,15 @@ def create_makeup():
         return jsonify({"message": "补考日期格式应为 YYYY-MM-DD"}), 400
 
     id_number = payload.get("idNumber", "").strip() or None
+    source_exam_id = payload.get("sourceExamId")
+    if source_exam_id is not None:
+        try:
+            source_exam_id = int(source_exam_id)
+        except (ValueError, TypeError):
+            return jsonify({"message": "sourceExamId 必须是数字"}), 400
+        exam = ExamRecord.query.get(source_exam_id)
+        if not exam:
+            return jsonify({"message": "关联的考试记录不存在"}), 400
 
     makeup = Makeup(
         student_name=payload["studentName"].strip(),
@@ -48,6 +57,7 @@ def create_makeup():
         scheduled_date=scheduled_date,
         status=payload.get("status", "待安排"),
         notes=payload.get("notes"),
+        source_exam_id=source_exam_id,
     )
     db.session.add(makeup)
     db.session.commit()
