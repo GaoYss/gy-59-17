@@ -110,8 +110,29 @@ async function createMakeup() {
 
 async function updateMakeup(row, payload) {
   try {
+    const isCancelling = payload.status === '已取消' && row.status !== '已取消'
+    const hasLinkedExam = isCancelling && row.sourceExamId
+
+    if (hasLinkedExam) {
+      const confirmed = window.confirm(
+        `确定要取消这次补考吗？\n\n取消后将释放关联的考试 #${row.sourceExamId}，` +
+        `该考试会重新出现在"可关联考试"列表中，可以再次选择关联。`
+      )
+      if (!confirmed) {
+        return
+      }
+    }
+
     await makeupApi.update(row.id, payload)
     await loadMakeups()
+
+    if (hasLinkedExam) {
+      message.text = `补考已取消，已释放关联考试 #${row.sourceExamId}，可重新选择关联`
+      message.type = 'success'
+      if (form.studentName || form.idNumber) {
+        await loadFailedExams()
+      }
+    }
   } catch (error) {
     message.text = error.message
     message.type = 'error'
