@@ -206,19 +206,25 @@ def get_student_failed_exams():
     if not id_number and not student_name:
         return jsonify({"message": "请提供证件号或学员姓名"}), 400
 
-    query = ExamRecord.query.filter_by(passed=False)
+    idn_exams = []
+    name_exams = []
+
+    base_query = ExamRecord.query.filter_by(passed=False)
     if id_number:
-        query = query.filter_by(id_number=id_number)
-    elif student_name:
-        query = query.filter_by(student_name=student_name)
+        idn_exams = base_query.filter_by(id_number=id_number).all()
+    if student_name:
+        name_exams = base_query.filter_by(student_name=student_name).all()
+
+    exams = _merge_unique(idn_exams, name_exams)
 
     linked_exam_ids = [
         m.source_exam_id
         for m in Makeup.query.filter(Makeup.source_exam_id.isnot(None)).all()
     ]
-    query = query.filter(~ExamRecord.id.in_(linked_exam_ids))
+    exams = [e for e in exams if e.id not in linked_exam_ids]
 
-    exams = query.order_by(ExamRecord.submitted_at.desc()).all()
+    exams.sort(key=lambda e: e.submitted_at, reverse=True)
+
     result = []
     for exam in exams:
         result.append({

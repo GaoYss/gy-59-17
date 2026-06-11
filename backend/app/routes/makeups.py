@@ -77,6 +77,8 @@ def update_makeup(makeup_id):
     if "status" in payload:
         if payload["status"] not in ["待安排", "已安排", "已通过", "已取消"]:
             return jsonify({"message": "无效补考状态"}), 400
+        if payload["status"] == "已取消" and makeup.source_exam_id:
+            makeup.source_exam_id = None
         makeup.status = payload["status"]
     if "notes" in payload:
         makeup.notes = payload["notes"]
