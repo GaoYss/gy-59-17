@@ -111,7 +111,10 @@ class Makeup(db.Model):
     scheduled_date = db.Column(db.Date, nullable=True)
     status = db.Column(db.String(20), nullable=False, default="待安排")
     notes = db.Column(db.String(255), nullable=True)
+    source_exam_id = db.Column(db.Integer, db.ForeignKey("exam_records.id"), nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    source_exam = db.relationship("ExamRecord", backref="linked_makeups")
 
     def to_dict(self):
         return {
@@ -125,5 +128,6 @@ class Makeup(db.Model):
             else None,
             "status": self.status,
             "notes": self.notes,
+            "sourceExamId": self.source_exam_id,
             "createdAt": self.created_at.isoformat(timespec="seconds"),
         }

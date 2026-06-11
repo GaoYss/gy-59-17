@@ -67,6 +67,7 @@ def submit_exam():
         details=details,
     )
     db.session.add(record)
+    db.session.flush()
 
     makeup = None
     if not passed:
@@ -77,6 +78,7 @@ def submit_exam():
             failed_score=score,
             status="待安排",
             notes=f"模拟考试未达合格线 {passing_score} 分",
+            source_exam_id=record.id,
         )
         db.session.add(makeup)
 

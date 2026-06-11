@@ -1,6 +1,6 @@
 <script setup>
-import { reactive, ref } from 'vue'
-import { CalendarCheck, ClipboardList, RotateCcw, Search, User } from 'lucide-vue-next'
+import { computed, reactive, ref } from 'vue'
+import { ArrowRight, CalendarCheck, ClipboardList, Link2, RotateCcw, Search, User } from 'lucide-vue-next'
 
 import { studentApi } from '../api/modules'
 import EmptyState from '../components/EmptyState.vue'
@@ -69,6 +69,22 @@ function getTypeLabel(type) {
 
 function getTypeClass(type) {
   return `timeline-type timeline-type-${type}`
+}
+
+function isLastInGroup(index, list) {
+  const current = list[index]
+  const next = list[index + 1]
+  if (!current.groupId) return true
+  if (!next) return true
+  return current.groupId !== next.groupId
+}
+
+function isFirstInGroup(index, list) {
+  const current = list[index]
+  const prev = list[index - 1]
+  if (!current.groupId) return true
+  if (!prev) return true
+  return current.groupId !== prev.groupId
 }
 </script>
 
@@ -160,29 +176,93 @@ function getTypeClass(type) {
         />
 
         <ul v-else class="timeline-list">
-          <li
+          <template
             v-for="(item, index) in trajectory.timeline"
             :key="`${item.type}-${item.id}-${index}`"
-            class="timeline-item"
           >
-            <div class="timeline-node">
-              <div class="timeline-icon" :class="getTypeClass(item.type)">
-                <component :is="getTypeIcon(item.type)" :size="16" />
+            <li
+              v-if="item.groupRole === 'head'"
+              class="timeline-item grouped grouped-head"
+            >
+              <div class="timeline-node">
+                <div class="timeline-icon" :class="getTypeClass(item.type)">
+                  <component :is="getTypeIcon(item.type)" :size="16" />
+                </div>
+                <div
+                  v-if="index < trajectory.timeline.length - 1"
+                  class="timeline-line linked-line"
+                />
               </div>
-              <div v-if="index < trajectory.timeline.length - 1" class="timeline-line" />
-            </div>
-            <div class="timeline-content">
-              <div class="timeline-head">
-                <span class="timeline-type-tag" :class="getTypeClass(item.type)">
-                  {{ getTypeLabel(item.type) }}
-                </span>
-                <h5 class="timeline-item-title">{{ item.title }}</h5>
-                <StatusBadge :status="item.status" />
+              <div class="timeline-content grouped-head-content linked-content">
+                <div class="timeline-head">
+                  <span class="timeline-type-tag" :class="getTypeClass(item.type)">
+                    {{ getTypeLabel(item.type) }}
+                  </span>
+                  <h5 class="timeline-item-title">{{ item.title }}</h5>
+                  <StatusBadge :status="item.status" />
+                </div>
+                <p class="timeline-desc">{{ item.description }}</p>
+                <p class="timeline-time">{{ item.datetime.replace('T', ' ') }}</p>
+
+                <div class="linked-makeup-indicator">
+                  <Link2 :size="14" />
+                  <span>本次考试未通过，已生成补考记录：</span>
+                </div>
               </div>
-              <p class="timeline-desc">{{ item.description }}</p>
-              <p class="timeline-time">{{ item.datetime.replace('T', ' ') }}</p>
-            </div>
-          </li>
+            </li>
+
+            <li
+              v-else-if="item.groupRole === 'tail'"
+              class="timeline-item grouped grouped-tail"
+            >
+              <div class="timeline-node">
+                <div class="timeline-icon makeup-linked-icon">
+                  <ArrowRight :size="14" />
+                </div>
+                <div
+                  v-if="!isLastInGroup(index, trajectory.timeline)"
+                  class="timeline-line"
+                />
+              </div>
+              <div class="timeline-content grouped-tail-content linked-content">
+                <div class="timeline-head">
+                  <span class="timeline-type-tag timeline-type-makeup linked-tag">
+                    {{ getTypeLabel(item.type) }}
+                  </span>
+                  <h5 class="timeline-item-title">{{ item.title }}</h5>
+                  <StatusBadge :status="item.status" />
+                </div>
+                <p class="timeline-desc">{{ item.description }}</p>
+                <p class="timeline-time">{{ item.datetime.replace('T', ' ') }}</p>
+              </div>
+            </li>
+
+            <li
+              v-else
+              class="timeline-item ungrouped"
+            >
+              <div class="timeline-node">
+                <div class="timeline-icon" :class="getTypeClass(item.type)">
+                  <component :is="getTypeIcon(item.type)" :size="16" />
+                </div>
+                <div
+                  v-if="index < trajectory.timeline.length - 1"
+                  class="timeline-line"
+                />
+              </div>
+              <div class="timeline-content">
+                <div class="timeline-head">
+                  <span class="timeline-type-tag" :class="getTypeClass(item.type)">
+                    {{ getTypeLabel(item.type) }}
+                  </span>
+                  <h5 class="timeline-item-title">{{ item.title }}</h5>
+                  <StatusBadge :status="item.status" />
+                </div>
+                <p class="timeline-desc">{{ item.description }}</p>
+                <p class="timeline-time">{{ item.datetime.replace('T', ' ') }}</p>
+              </div>
+            </li>
+          </template>
         </ul>
       </div>
     </template>
@@ -303,13 +383,21 @@ function getTypeClass(type) {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 4px;
+  gap: 0;
 }
 
 .timeline-item {
   display: grid;
   grid-template-columns: 40px minmax(0, 1fr);
   gap: 14px;
+}
+
+.timeline-item.grouped.grouped-head + .timeline-item.grouped.grouped-tail {
+  margin-top: 4px;
+}
+
+.timeline-item.ungrouped {
+  margin-bottom: 4px;
 }
 
 .timeline-node {
@@ -329,14 +417,31 @@ function getTypeClass(type) {
   background: #e5ebef;
   color: #425466;
   z-index: 1;
+  flex-shrink: 0;
+}
+
+.timeline-icon.makeup-linked-icon {
+  width: 22px;
+  height: 22px;
+  margin-top: 4px;
+  background: linear-gradient(135deg, #fef3c7, #f59e0b);
+  color: #78350f;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px #f59e0b, 0 2px 6px rgba(245, 158, 11, 0.3);
 }
 
 .timeline-line {
   flex: 1;
   width: 2px;
-  min-height: 24px;
+  min-height: 28px;
   background: #e5ebef;
   margin-top: 4px;
+}
+
+.timeline-line.linked-line {
+  background: linear-gradient(180deg, #10b981 0%, #f59e0b 100%);
+  width: 3px;
+  min-height: 16px;
 }
 
 .timeline-type-appointment {
@@ -359,7 +464,32 @@ function getTypeClass(type) {
   border-radius: 8px;
   padding: 14px 16px;
   background: #fff;
-  margin-bottom: 4px;
+}
+
+.timeline-content.linked-content {
+  border-style: dashed;
+  border-width: 2px;
+}
+
+.timeline-item.grouped-head .grouped-head-content {
+  background: linear-gradient(180deg, #fff 0%, #fefce8 100%);
+  border-color: #f59e0b;
+  border-width: 2px;
+  border-style: solid;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom: 1px dashed #f59e0b;
+}
+
+.timeline-item.grouped-tail .grouped-tail-content {
+  background: linear-gradient(180deg, #fffbeb 0%, #fff 100%);
+  border-color: #f59e0b;
+  border-width: 2px;
+  border-style: solid;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border-top: none;
+  margin-bottom: 8px;
 }
 
 .timeline-head {
@@ -395,6 +525,11 @@ function getTypeClass(type) {
   color: #92400e;
 }
 
+.timeline-type-tag.linked-tag {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+}
+
 .timeline-item-title {
   margin: 0;
   font-size: 14px;
@@ -414,6 +549,20 @@ function getTypeClass(type) {
   margin: 0;
   font-size: 12px;
   color: #9ca3af;
+}
+
+.linked-makeup-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 6px 10px;
+  background: #fffbeb;
+  border: 1px dashed #f59e0b;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #92400e;
 }
 
 @media (max-width: 980px) {
